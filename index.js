@@ -1,827 +1,890 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const http = require('http');
-const https = require('https');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-let MOVIES = [];
-
-try {
-    const data = JSON.parse(fs.readFileSync(path.join(__dirname, process.env.DATA_FILE || 'data.json'), 'utf8'));
-    MOVIES = data.map((m, i) => ({ id: i, title: m.title || 'Sin título', poster: m.logo || '', url: m.url || '' }));
-    console.log(`✓ ${MOVIES.length} películas`);
-} catch (e) { console.error('Error:', e.message); }
-
-app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Range');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Range,Accept-Ranges,Content-Length');
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    next();
-});
-
-app.get('/api/movies', (req, res) => {
-    const { page = 0, limit = 200, q = '', random } = req.query;
-    let list = q ? MOVIES.filter(m => m.title.toLowerCase().includes(q.toLowerCase())) : [...MOVIES];
-    if (random === 'true') list.sort(() => Math.random() - 0.5);
-    const start = page * limit;
-    res.json({ total: list.length, hasMore: start + +limit < list.length, data: list.slice(start, start + +limit) });
-});
-
-app.get('/video-proxy', (req, res) => {
-    const url = req.query.url;
-    if (!url) return res.status(400).end();
-    let parsed;
-    try { parsed = new URL(decodeURIComponent(url)); } catch { return res.status(400).end(); }
-    const client = parsed.protocol === 'https:' ? https : http;
-    const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Accept-Encoding': 'identity', 'Referer': parsed.origin + '/' };
-    if (req.headers.range) headers['Range'] = req.headers.range;
-    const proxyReq = client.request({ hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: parsed.pathname + parsed.search, headers, timeout: 30000 }, proxyRes => {
-        if ([301, 302, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
-            proxyRes.destroy();
-            return res.redirect(307, '/video-proxy?url=' + encodeURIComponent(proxyRes.headers.location));
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Netflix Style · La Casa de Papel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        const h = { 'Content-Type': proxyRes.headers['content-type'] || 'video/mp4', 'Accept-Ranges': 'bytes' };
-        if (proxyRes.headers['content-length']) h['Content-Length'] = proxyRes.headers['content-length'];
-        if (proxyRes.headers['content-range']) h['Content-Range'] = proxyRes.headers['content-range'];
-        res.writeHead(proxyRes.statusCode, h);
-        proxyRes.pipe(res);
-        proxyRes.on('error', () => res.end());
-    });
-    proxyReq.on('error', () => !res.headersSent && res.status(502).end());
-    proxyReq.on('timeout', () => { proxyReq.destroy(); !res.headersSent && res.status(504).end(); });
-    req.on('close', () => proxyReq.destroy());
-    proxyReq.end();
-});
 
-app.get('/', (req, res) => res.send(`<!DOCTYPE html><html lang="es"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Movies+</title><style>
-*{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
-:root{--p:#f5c518;--bg:#0a0a0a;--s:#161616;--c:#1a1a1a;--b:#2a2a2a;--t:#e0e0e0;--t2:#888}
-html,body{background:var(--bg);color:var(--t);font-family:system-ui,sans-serif;height:100%;overflow:hidden}
-#app{height:100%;display:flex;flex-direction:column}
-.hdr{display:flex;align-items:center;gap:10px;padding:12px;background:var(--s);border-bottom:1px solid var(--b)}
-.logo{color:var(--p);font-weight:700;font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s}
-.logo:hover,.logo.f{background:rgba(245,197,24,0.1)}
-.srch{flex:1;background:var(--bg);border:2px solid var(--b);color:var(--t);padding:10px;border-radius:8px;font-size:16px;outline:none;transition:border-color 0.2s}
-.srch:focus,.srch.f{border-color:var(--p)}
-.btn{background:var(--c);border:2px solid var(--b);color:var(--t);padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.2s}
-.btn:hover,.btn.f{background:var(--p);color:#000;border-color:var(--p)}
-.stats{color:var(--t2);font-size:12px;margin-left:auto}
-.main{flex:1;overflow-y:auto;padding:10px;-webkit-overflow-scrolling:touch}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.card{position:relative;aspect-ratio:2/3;background:var(--c);border-radius:6px;overflow:hidden;border:2px solid transparent;cursor:pointer;transition:transform 0.15s, border-color 0.15s}
-.card:hover{transform:scale(1.02)}
-.card.f{border-color:var(--p);transform:scale(1.05);box-shadow:0 0 15px rgba(245,197,24,.3);z-index:10}
-.card img{width:100%;height:100%;object-fit:cover;background:linear-gradient(45deg,#1a1a1a 25%,#222 25%,#222 50%,#1a1a1a 50%,#1a1a1a 75%,#222 75%,#222);background-size:20px 20px;opacity:0;transition:opacity 0.3s ease-in-out}
-.card img.loaded{opacity:1}
-.card-t{position:absolute;bottom:0;left:0;right:0;padding:20px 6px 6px;background:linear-gradient(transparent,#000);font-size:11px;font-weight:600;opacity:0;transform:translateY(5px);transition:opacity 0.2s, transform 0.2s}
-.card.f .card-t{opacity:1;transform:translateY(0)}
-.player{position:fixed;inset:0;background:#000;z-index:200;display:none}
-.player.open{display:flex;flex-direction:column}
-video{flex:1;width:100%;background:#000}
-.p-ui{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;opacity:1;transition:.2s;background:linear-gradient(#000a,transparent 15%,transparent 85%,#000a);pointer-events:none}
-.p-ui>*{pointer-events:auto}.p-ui.hide{opacity:0}.p-ui.hide>*{pointer-events:none}
-.p-top{padding:12px;padding-top:max(12px,env(safe-area-inset-top))}
-.p-title{font-size:14px;font-weight:600}
-.p-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:40px;font-weight:700;opacity:0;transition:.15s;pointer-events:none}
-.p-center.show{opacity:1}
-.p-bottom{padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
-.p-prog{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.p-time{font-size:12px;min-width:45px}
-.p-bar{flex:1;height:5px;background:#444;border-radius:3px;position:relative;cursor:pointer}
-.p-bar-fill{position:absolute;left:0;top:0;height:100%;background:var(--p);border-radius:3px}
-.p-bar-buf{position:absolute;left:0;top:0;height:100%;background:#666;border-radius:3px;z-index:-1}
-.p-ctrl{display:flex;justify-content:center;gap:10px}
-.p-btn{width:44px;height:44px;background:rgba(255,255,255,.1);border:none;border-radius:50%;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.2s}
-.p-btn:hover,.p-btn:active,.p-btn.f{background:var(--p);color:#000}
-.p-btn.main{width:52px;height:52px;font-size:18px}
-.p-load,.p-err{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;display:none}
-.p-load.show,.p-err.show{display:block}
-.p-spin{width:36px;height:36px;border:3px solid #333;border-top-color:var(--p);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
-.msg{text-align:center;padding:40px;color:var(--t2)}
-.msg.load::after{content:'';display:block;width:20px;height:20px;margin:12px auto 0;border:2px solid #333;border-top-color:var(--p);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-</style></head><body><div id="app">
-<div class="hdr">
-    <div class="logo f" id="logo">MOVIES+</div>
-    <input class="srch" id="srch" placeholder="Buscar..." autocomplete="off">
-    <button class="btn" id="mix">🎲</button>
-    <span class="stats" id="stats"></span>
+        :root {
+            --netflix-red: #e50914;
+            --netflix-black: #141414;
+            --netflix-dark: #0a0a0a;
+            --netflix-gray: #2f2f2f;
+            --netflix-light: #b3b3b3;
+            --gold: #f5c518;
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            background-color: var(--netflix-black);
+            font-family: 'Netflix Sans', 'Helvetica Neue', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Layout principal */
+        .app {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header estilo Netflix */
+        .header {
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.98) 100%);
+            padding: 12px 40px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #e50914 0%, #b20710 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .logo.f {
+            background: var(--gold);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 8px rgba(245,197,24,0.5);
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 350px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(0,0,0,0.75);
+            border: 1px solid #333;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .search-input:focus, .search-input.f {
+            border-color: var(--gold);
+            outline: none;
+            background: #1a1a1a;
+        }
+
+        .mix-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #444;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 14px;
+        }
+
+        .mix-btn.f, .mix-btn:hover {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: black;
+        }
+
+        .stats {
+            color: #777;
+            font-size: 13px;
+            margin-left: auto;
+        }
+
+        /* Main scroll container */
+        .main-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 40px;
+            scroll-behavior: smooth;
+        }
+
+        /* SECCIÓN HERO - INSPIRADA EN LA IMAGEN MONEY HEIST */
+        .hero-section {
+            margin-bottom: 40px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 100%);
+            border: 1px solid rgba(229,9,20,0.3);
+        }
+
+        .hero-banner {
+            background: linear-gradient(90deg, #000000 0%, #8b0000 50%, #e50914 100%);
+            padding: 40px 40px 30px;
+            position: relative;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" opacity="0.1"><path fill="%23e50914" d="M0,0 L1200,0 L1200,300 L0,300 Z" /></svg>');
+        }
+
+        .series-badge {
+            font-size: 14px;
+            letter-spacing: 3px;
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .hero-title {
+            font-size: 52px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 30%, #ffd700 80%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .hero-match {
+            display: inline-block;
+            background: var(--gold);
+            color: black;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+
+        .hero-year {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .hero-parts {
+            margin: 15px 0;
+            color: #ddd;
+        }
+
+        .hero-description {
+            max-width: 600px;
+            font-size: 15px;
+            line-height: 1.4;
+            color: #ddd;
+            margin: 20px 0;
+        }
+
+        .watch-now-btn {
+            background: white;
+            color: black;
+            border: none;
+            padding: 10px 30px;
+            font-weight: bold;
+            font-size: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .watch-now-btn:hover {
+            transform: scale(1.02);
+            background: #e6e6e6;
+        }
+
+        /* Popular section title */
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+            border-left: 4px solid var(--gold);
+            padding-left: 15px;
+        }
+
+        /* Grid estilo netflix rows */
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        /* Cards estilo netflix con hover */
+        .movie-card {
+            position: relative;
+            aspect-ratio: 2 / 3;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #1a1a1a;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .movie-card.f {
+            border: 2px solid var(--gold);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(245,197,24,0.4);
+            z-index: 5;
+        }
+
+        .movie-card:hover {
+            transform: scale(1.03);
+        }
+
+        .movie-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.25s ease-in;
+        }
+
+        .movie-card img.loaded {
+            opacity: 1;
+        }
+
+        .movie-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            padding: 30px 8px 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .movie-card.f .movie-title,
+        .movie-card:hover .movie-title {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Loading / empty states */
+        .loading-message, .error-message {
+            text-align: center;
+            padding: 60px;
+            color: #aaa;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Player overlay (Netflix style) */
+        .player-overlay {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .player-overlay.open {
+            display: flex;
+        }
+
+        video {
+            flex: 1;
+            width: 100%;
+            background: black;
+            outline: none;
+        }
+
+        .player-ui {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(0deg, #000000aa 0%, transparent 25%, transparent 70%, #000000aa 100%);
+            opacity: 1;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .player-ui.hide {
+            opacity: 0;
+        }
+
+        .player-ui > * {
+            pointer-events: auto;
+        }
+
+        .player-top {
+            padding: 20px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .player-center-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 0 0 10px black;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .player-bottom {
+            padding: 20px;
+        }
+
+        .progress-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .time {
+            font-size: 13px;
+            min-width: 45px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: #555;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            position: absolute;
+            height: 100%;
+            background: var(--gold);
+            border-radius: 2px;
+            width: 0%;
+        }
+
+        .progress-buffered {
+            position: absolute;
+            height: 100%;
+            background: #888;
+            border-radius: 2px;
+            width: 0%;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .ctrl-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .ctrl-btn.main {
+            width: 56px;
+            height: 56px;
+            font-size: 20px;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--gold);
+            color: black;
+        }
+
+        .player-loading, .player-error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 20;
+        }
+
+        .player-loading.show, .player-error.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 16px;
+                gap: 12px;
+            }
+            .main-container {
+                padding: 12px;
+            }
+            .hero-title {
+                font-size: 32px;
+            }
+            .hero-banner {
+                padding: 20px;
+            }
+            .movies-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <div class="logo" id="logoBtn">NETFLIX</div>
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="Títulos, personas, géneros">
+        </div>
+        <button class="mix-btn" id="mixBtn">🎲 Sorpresa</button>
+        <span class="stats" id="statsCount">0 películas</span>
+    </div>
+    <div class="main-container" id="mainContainer">
+        <!-- Hero dinámico: inspirado en la imagen -->
+        <div class="hero-section" id="heroSection">
+            <div class="hero-banner">
+                <div class="series-badge">SERIES</div>
+                <div class="hero-title">MONEY HEIST</div>
+                <div><span class="hero-match">97% Match</span><span class="hero-year">2020 · 4 Parts</span></div>
+                <div class="hero-parts">🔥 Temporada 4 ya disponible</div>
+                <div class="hero-description">
+                    Lives are on the line as the Professor's plan begins to unravel and the crew must fend off enemies from both inside and outside the Bank of Spain.
+                </div>
+                <button class="watch-now-btn" id="heroWatchBtn">▶ Watch Part 4 Now</button>
+            </div>
+        </div>
+
+        <div class="section-title">Popular on Netflix</div>
+        <div class="movies-grid" id="moviesGrid">
+            <div class="loading-message">Cargando experiencias...</div>
+        </div>
+    </div>
 </div>
-<div class="main" id="main"><div class="grid" id="grid"><div class="msg load">Cargando</div></div></div>
-<div class="player" id="player">
-<video id="vid" playsinline webkit-playsinline></video>
-<div class="p-load" id="pLoad"><div class="p-spin"></div><div id="pLoadTxt">Cargando...</div></div>
-<div class="p-err" id="pErr"><div>Error</div><div style="font-size:11px;color:#888;margin:8px 0" id="pErrTxt"></div><button class="btn" id="pRetry">Reintentar</button> <button class="btn" id="pBack">Volver</button></div>
-<div class="p-center" id="pInd"></div>
-<div class="p-ui" id="pUi">
-<div class="p-top"><div class="p-title" id="pTitle"></div></div>
-<div class="p-bottom">
-<div class="p-prog"><span class="p-time" id="pCur">0:00</span><div class="p-bar" id="pBar"><div class="p-bar-buf" id="pBuf"></div><div class="p-bar-fill" id="pFill"></div></div><span class="p-time" id="pDur">0:00</span></div>
-<div class="p-ctrl"><button class="p-btn" id="pRw">-10</button><button class="p-btn main" id="pPp">▶</button><button class="p-btn" id="pFw">+10</button></div>
-</div></div></div></div>
+
+<!-- Reproductor estilo Netflix -->
+<div class="player-overlay" id="playerOverlay">
+    <video id="videoPlayer" playsinline webkit-playsinline></video>
+    <div class="player-loading" id="playerLoading"><div class="loading-spinner"></div><div id="loadingText">Cargando...</div></div>
+    <div class="player-error" id="playerError">
+        <div>⚠️ Error al reproducir</div>
+        <button class="mix-btn" id="retryBtn" style="margin-top:12px">Reintentar</button>
+        <button class="mix-btn" id="closeErrorBtn" style="margin-top:8px">Volver</button>
+    </div>
+    <div class="player-ui" id="playerUi">
+        <div class="player-top"><span id="playerTitle"></span></div>
+        <div class="player-center-indicator" id="centerIndicator"></div>
+        <div class="player-bottom">
+            <div class="progress-section">
+                <span class="time" id="currentTime">0:00</span>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-buffered" id="bufferedBar"></div>
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span class="time" id="durationTime">0:00</span>
+            </div>
+            <div class="controls">
+                <button class="ctrl-btn" id="rewindBtn">-10</button>
+                <button class="ctrl-btn main" id="playPauseBtn">▶</button>
+                <button class="ctrl-btn" id="forwardBtn">+10</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-(function(){
-const $=id=>document.getElementById(id);
-const el={
-    logo:$('logo'), grid:$('grid'), main:$('main'), srch:$('srch'), mix:$('mix'), stats:$('stats'),
-    player:$('player'), vid:$('vid'), pUi:$('pUi'), pTitle:$('pTitle'), pLoad:$('pLoad'), 
-    pLoadTxt:$('pLoadTxt'), pErr:$('pErr'), pErrTxt:$('pErrTxt'), pInd:$('pInd'), pBar:$('pBar'), 
-    pFill:$('pFill'), pBuf:$('pBuf'), pCur:$('pCur'), pDur:$('pDur'), pRw:$('pRw'), pPp:$('pPp'), 
-    pFw:$('pFw'), pRetry:$('pRetry'), pBack:$('pBack')
-};
+    // ======================== BACKEND INTEGRATION ======================
+    let MOVIES_DATA = [];
+    let currentFocus = null;          // elemento con focus
+    let focusType = 'header';          // 'header' or 'grid'
+    let currentGridIndex = -1;
+    let headerElements = [];
+    let gridColumns = 5;
+    let activeSearchTerm = '';
+    let currentMoviesList = [];
 
-const S={
-    view:'home', movies:[], focus:null, lastFocus:null, playing:false, retry:0,
-    imgObserver:null, gridCols:0, currentIndex:-1,
-    headerElements:[], // Logo, Search, Mix - en orden de navegación
-    headerIndex:0 // Índice actual en el header
-};
+    // Player state
+    let playerActive = false;
+    let currentMovieObj = null;
+    let hideUITimer = null;
+    let indicatorTimer = null;
 
-// ===== INICIALIZACIÓN =====
-history.replaceState({v:'home'},'','#home');
-window.onpopstate=()=>{if(S.view==='player'){closeP();history.pushState({v:'home'},'','#home')}};
+    // DOM Elements
+    const logoBtn = document.getElementById('logoBtn');
+    const searchInput = document.getElementById('searchInput');
+    const mixBtn = document.getElementById('mixBtn');
+    const statsSpan = document.getElementById('statsCount');
+    const moviesGrid = document.getElementById('moviesGrid');
+    const mainContainer = document.getElementById('mainContainer');
+    const heroWatchBtn = document.getElementById('heroWatchBtn');
+    const playerOverlay = document.getElementById('playerOverlay');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const playerLoading = document.getElementById('playerLoading');
+    const playerError = document.getElementById('playerError');
+    const playerUi = document.getElementById('playerUi');
+    const playerTitleSpan = document.getElementById('playerTitle');
+    const centerIndicator = document.getElementById('centerIndicator');
+    const currentTimeSpan = document.getElementById('currentTime');
+    const durationTimeSpan = document.getElementById('durationTime');
+    const progressFill = document.getElementById('progressFill');
+    const bufferedBar = document.getElementById('bufferedBar');
+    const progressBar = document.getElementById('progressBar');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const rewindBtn = document.getElementById('rewindBtn');
+    const forwardBtn = document.getElementById('forwardBtn');
+    const retryBtn = document.getElementById('retryBtn');
+    const closeErrorBtn = document.getElementById('closeErrorBtn');
+    const loadingTextSpan = document.getElementById('loadingText');
 
-function init() {
-    // Configurar elementos del header
-    S.headerElements = [el.logo, el.srch, el.mix];
-
-    fetch('/api/movies?limit=200&random=true').then(r=>r.json()).then(d=>{
-        el.stats.textContent=d.total+' películas';
-        el.grid.innerHTML='';
-        S.movies=d.data;
-        d.data.forEach(m=>el.grid.appendChild(mkCard(m)));
-
-        // Calcular columnas del grid
-        calculateGridColumns();
-
-        // Inicializar lazy loading
-        initLazyLoading();
-
-        // Enfocar logo inicialmente
-        setFocusHeader(0);
-
-    }).catch(()=>el.grid.innerHTML='<div class="msg">Error</div>');
-}
-
-// ===== LAZY LOADING CON ANIMACIÓN SUAVE =====
-function initLazyLoading() {
-    if(S.imgObserver) S.imgObserver.disconnect();
-
-    S.imgObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if(entry.isIntersecting){
-                const img = entry.target;
-                if(img.dataset.src && !img.classList.contains('loaded')) {
-                    loadImageWithAnimation(img);
-                }
-                S.imgObserver.unobserve(img);
-            }
-        });
-    }, {
-        rootMargin: '300px 0px', // Cargar antes de que entren al viewport
-        threshold: 0.01
-    });
-
-    // Observar todas las imágenes
-    document.querySelectorAll('.card img[data-src]').forEach(img => {
-        S.imgObserver.observe(img);
-    });
-}
-
-function loadImageWithAnimation(img) {
-    if(!img.dataset.src) return;
-
-    const src = img.dataset.src;
-    const imgEl = new Image();
-
-    imgEl.onload = () => {
-        img.src = src;
-        // Forzar reflow para activar la animación
-        void img.offsetWidth;
-        img.classList.add('loaded');
-        img.style.background = 'none';
-    };
-
-    imgEl.onerror = () => {
-        // Usar placeholder SVG con animación
-        img.src = 'data:image/svg+xml;base64,' + btoa(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="130" height="195" viewBox="0 0 130 195">' +
-            '<rect width="130" height="195" fill="#1a1a1a"/>' +
-            '<text x="65" y="95" font-family="Arial" font-size="12" fill="#888" text-anchor="middle">Sin imagen</text>' +
-            '</svg>'
-        );
-        img.classList.add('loaded');
-        img.style.background = 'none';
-    };
-
-    // Pequeño delay para mostrar la animación de carga
-    setTimeout(() => {
-        imgEl.src = src;
-    }, 100);
-}
-
-function preloadAdjacentImages(index) {
-    const cards = getCards();
-    if(!cards.length) return;
-
-    // Cargar imágenes en un radio de 2 elementos
-    for(let i = Math.max(0, index - 2); i <= Math.min(cards.length - 1, index + 2); i++) {
-        const img = cards[i].querySelector('img[data-src]');
-        if(img && img.dataset.src && !img.classList.contains('loaded')) {
-            loadImageWithAnimation(img);
-        }
-    }
-}
-
-// ===== SISTEMA DE NAVEGACIÓN UNIFICADO =====
-function getCards() {
-    return [...el.grid.querySelectorAll('.card')];
-}
-
-function calculateGridColumns() {
-    const grid = el.grid;
-    if(!grid.children.length) {
-        S.gridCols = 0;
-        return;
-    }
-
-    // Método simple: contar elementos en la primera fila
-    const firstCard = grid.children[0];
-    const firstRect = firstCard.getBoundingClientRect();
-    let cols = 1;
-
-    for(let i = 1; i < grid.children.length; i++) {
-        const rect = grid.children[i].getBoundingClientRect();
-        if(Math.abs(rect.top - firstRect.top) < 10) {
-            cols++;
-        } else {
-            break;
+    // Helper: fetch movies
+    async function fetchMovies(query = '', random = false) {
+        try {
+            let url = '/api/movies?limit=200';
+            if (query) url += `&q=${encodeURIComponent(query)}`;
+            if (random) url += `&random=true`;
+            const res = await fetch(url);
+            const data = await res.json();
+            return data.data || [];
+        } catch (err) {
+            console.error(err);
+            return [];
         }
     }
 
-    S.gridCols = Math.max(1, cols);
-}
-
-// ===== MANEJO DE FOCUS =====
-function setFocusHeader(index) {
-    if(index < 0) index = 0;
-    if(index >= S.headerElements.length) index = S.headerElements.length - 1;
-
-    // Remover focus anterior
-    if(S.focus && S.focus.classList) S.focus.classList.remove('f');
-
-    // Actualizar estado
-    S.headerIndex = index;
-    S.focus = S.headerElements[index];
-    S.currentIndex = -1; // Resetear índice de grid
-
-    // Aplicar focus
-    S.focus.classList.add('f');
-
-    // Focus nativo para input
-    if(S.focus === el.srch) {
-        el.srch.focus();
-    } else {
-        el.srch.blur();
-    }
-}
-
-function setFocusGrid(index) {
-    const cards = getCards();
-    if(index < 0) index = 0;
-    if(index >= cards.length) index = cards.length - 1;
-
-    // Remover focus anterior
-    if(S.focus && S.focus.classList) S.focus.classList.remove('f');
-
-    // Actualizar estado
-    S.currentIndex = index;
-    S.focus = cards[index];
-    S.headerIndex = -1; // Resetear índice de header
-
-    // Aplicar focus
-    cards[index].classList.add('f');
-
-    // Scroll suave
-    const card = cards[index];
-    const mainRect = el.main.getBoundingClientRect();
-    const cardRect = card.getBoundingClientRect();
-
-    if(cardRect.top < mainRect.top || cardRect.bottom > mainRect.bottom) {
-        card.scrollIntoView({block: 'nearest', behavior: 'smooth'});
-    }
-
-    // Pre-cargar imágenes adyacentes
-    preloadAdjacentImages(index);
-}
-
-function navigateGrid(direction) {
-    const cards = getCards();
-    if(!cards.length) return false;
-
-    let newIndex = S.currentIndex;
-
-    switch(direction) {
-        case 'up':
-            if(S.currentIndex < S.gridCols) {
-                // Ir al header (botón mix)
-                setFocusHeader(2);
-                return true;
-            }
-            newIndex = Math.max(0, S.currentIndex - S.gridCols);
-            break;
-        case 'down':
-            newIndex = Math.min(cards.length - 1, S.currentIndex + S.gridCols);
-            break;
-        case 'left':
-            if(S.currentIndex % S.gridCols === 0) {
-                // Primera columna, ir al header (search)
-                setFocusHeader(1);
-                return true;
-            }
-            newIndex = Math.max(0, S.currentIndex - 1);
-            break;
-        case 'right':
-            if((S.currentIndex + 1) % S.gridCols === 0 || S.currentIndex === cards.length - 1) {
-                // Última columna, no hacer nada o loop
-                return false;
-            }
-            newIndex = Math.min(cards.length - 1, S.currentIndex + 1);
-            break;
-    }
-
-    if(newIndex !== S.currentIndex) {
-        setFocusGrid(newIndex);
-        return true;
-    }
-
-    return false;
-}
-
-function navigateHeader(direction) {
-    let newIndex = S.headerIndex;
-
-    switch(direction) {
-        case 'left':
-            newIndex = Math.max(0, S.headerIndex - 1);
-            break;
-        case 'right':
-            newIndex = Math.min(S.headerElements.length - 1, S.headerIndex + 1);
-            break;
-        case 'down':
-            // Ir a la primera card del grid
-            const cards = getCards();
-            if(cards.length > 0) {
-                setFocusGrid(0);
-                return true;
-            }
-            break;
-        case 'up':
-            // No hay nada arriba del header
-            return false;
-    }
-
-    if(newIndex !== S.headerIndex) {
-        setFocusHeader(newIndex);
-        return true;
-    }
-
-    return false;
-}
-
-// ===== MANEJO DE TECLADO =====
-document.onkeydown = e => {
-    const k = e.key;
-
-    // Prevenir comportamiento por defecto para teclas de navegación
-    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' ','Escape','Backspace','Tab'].includes(k)){
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    if(S.view === 'player'){
-        playerKey(k);
-        return;
-    }
-
-    // Evitar que Tab cambie el focus
-    if(k === 'Tab') {
-        e.preventDefault();
-        if(S.focus === el.srch) {
-            // Si estamos en search, ir al siguiente elemento del header
-            navigateHeader('right');
-        } else {
-            // Por defecto, ir al primer elemento del header
-            setFocusHeader(0);
-        }
-        return;
-    }
-
-    nav(k);
-};
-
-function nav(k) {
-    // Activar elemento seleccionado
-    if(k === 'Enter' || k === ' ') {
-        if(S.focus === el.logo) {
-            // Recargar página
-            location.reload();
-        } else if(S.focus === el.srch) {
-            el.srch.focus();
-            // Si hay texto, ejecutar búsqueda
-            if(el.srch.value.trim()) {
-                loadMovies(false);
-            }
-        } else if(S.focus === el.mix) {
-            loadMovies(true);
-        } else if(S.focus && S.focus.classList.contains('card')) {
-            const idx = [...el.grid.querySelectorAll('.card')].indexOf(S.focus);
-            if(idx >= 0 && S.movies[idx]) play(S.movies[idx]);
-        }
-        return;
-    }
-
-    // Escape para limpiar búsqueda
-    if(k === 'Escape') {
-        if(el.srch.value.trim()) {
-            el.srch.value = '';
-            loadMovies(false);
-        } else if(S.currentIndex >= 0) {
-            // Si estamos en el grid, ir al header
-            setFocusHeader(2); // Ir al botón mix
-        }
-        return;
-    }
-
-    // Backspace
-    if(k === 'Backspace') {
-        if(S.focus === el.srch && el.srch.value.length > 0) {
-            // Permitir borrar en el input
+    // Renderizar grid con cards
+    function renderGrid(movies) {
+        if (!movies.length) {
+            moviesGrid.innerHTML = '<div class="loading-message">🎬 No se encontraron títulos</div>';
+            statsSpan.innerText = `0 películas`;
             return;
-        } else if(S.currentIndex >= 0) {
-            // Si estamos en el grid, ir al header
-            setFocusHeader(2);
         }
-        return;
-    }
-
-    // Navegación con flechas
-    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
-        const direction = k.toLowerCase().replace('arrow', '');
-
-        if(S.currentIndex >= 0) {
-            // Estamos en el grid
-            if(!navigateGrid(direction) && direction === 'right') {
-                // Si no se pudo navegar en el grid y es derecha, ir al header
-                setFocusHeader(0);
-            }
-        } else if(S.headerIndex >= 0) {
-            // Estamos en el header
-            if(!navigateHeader(direction) && direction === 'left' && S.headerIndex === 0) {
-                // Si estamos en el logo y vamos a la izquierda, loop al final del grid
-                const cards = getCards();
-                if(cards.length > 0) {
-                    setFocusGrid(cards.length - 1);
-                }
-            }
-        } else {
-            // Sin focus, empezar en el header
-            setFocusHeader(0);
-        }
-    }
-}
-
-// Eventos de focus para elementos del header
-el.logo.addEventListener('focus', () => setFocusHeader(0));
-el.srch.addEventListener('focus', () => setFocusHeader(1));
-el.mix.addEventListener('focus', () => setFocusHeader(2));
-
-// Clic en logo para recargar
-el.logo.addEventListener('click', () => location.reload());
-
-// ===== BÚSQUEDA Y CARGA DE PELÍCULAS =====
-let searchTimer;
-el.srch.oninput = () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => loadMovies(false), 400);
-};
-
-el.mix.onclick = () => loadMovies(true);
-
-function loadMovies(random) {
-    el.grid.innerHTML = '<div class="msg load">Cargando</div>';
-    const q = el.srch.value.trim();
-    fetch('/api/movies?limit=200' + (q ? '&q=' + encodeURIComponent(q) : '') + (random ? '&random=true' : ''))
-        .then(r => r.json())
-        .then(d => {
-            el.grid.innerHTML = '';
-            S.movies = d.data;
-            S.currentIndex = -1;
-
-            // Crear cards con animación escalonada
-            d.data.forEach((m, i) => {
-                setTimeout(() => {
-                    el.grid.appendChild(mkCard(m));
-                }, i * 10); // Pequeño delay para animación escalonada
+        statsSpan.innerText = `${movies.length} películas`;
+        moviesGrid.innerHTML = '';
+        movies.forEach((movie, idx) => {
+            const card = document.createElement('div');
+            card.className = 'movie-card';
+            card.setAttribute('data-idx', idx);
+            card.setAttribute('data-id', movie.id);
+            const posterUrl = movie.poster || '';
+            card.innerHTML = `
+                <img data-src="${escapeHtml(posterUrl)}" alt="${escapeHtml(movie.title)}">
+                <div class="movie-title">${escapeHtml(movie.title)}</div>
+            `;
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                playMovie(movie);
             });
-
-            // Calcular columnas y reinicializar lazy loading
-            setTimeout(() => {
-                calculateGridColumns();
-                initLazyLoading();
-
-                // Enfocar primera card si hay resultados
-                const cards = getCards();
-                if(cards.length > 0) {
-                    setFocusGrid(0);
-                } else {
-                    // Si no hay resultados, mantener focus en search
-                    setFocusHeader(1);
-                }
-            }, 100);
-        })
-        .catch(() => {
-            el.grid.innerHTML = '<div class="msg">Error al cargar</div>';
-            setFocusHeader(1);
+            moviesGrid.appendChild(card);
         });
-}
-
-function mkCard(m) {
-    const d = document.createElement('div');
-    d.className = 'card';
-    d.tabIndex = -1;
-
-    const posterSrc = m.poster || '';
-    d.innerHTML = '<img data-src="' + esc(posterSrc) + '" alt="' + esc(m.title) + '">' +
-                  '<div class="card-t">' + esc(m.title) + '</div>';
-
-    d.onclick = () => {
-        const idx = [...el.grid.querySelectorAll('.card')].indexOf(d);
-        if(idx >= 0 && S.movies[idx]) play(S.movies[idx]);
-    };
-
-    return d;
-}
-
-// ===== REPRODUCTOR (sin cambios mayores) =====
-function play(m) {
-    S.lastFocus = S.focus;
-    S.view = 'player';
-    S.retry = 0;
-    history.pushState({v:'player'},'','#player');
-    el.pErr.classList.remove('show');
-    el.pLoad.classList.add('show');
-    el.pLoadTxt.textContent = 'Conectando...';
-    el.pTitle.textContent = m.title;
-    el.player.classList.add('open');
-    el.vid.pause();
-    el.vid.removeAttribute('src');
-    el.vid.load();
-
-    setTimeout(() => {
-        let u = m.url;
-        if(u.startsWith('http://') || location.protocol === 'https:') {
-            u = '/video-proxy?url=' + encodeURIComponent(u);
+        initLazyImages();
+        recalcGridColumns();
+        // Reset focus grid
+        if (movies.length > 0 && focusType === 'grid' && currentGridIndex >= movies.length) {
+            setFocusGrid(0);
+        } else if (focusType === 'grid' && currentGridIndex >= 0) {
+            setFocusGrid(currentGridIndex);
+        } else if (movies.length > 0 && focusType !== 'grid') {
+            // si no hay focus en grid, no forzar
         }
-        el.vid.src = u;
-        el.vid.play().catch(playErr);
-        showUI();
-    }, 50);
-}
+    }
 
-function closeP() {
-    el.vid.pause();
-    el.vid.removeAttribute('src');
-    el.vid.load();
-    el.player.classList.remove('open');
-    S.view = 'home';
+    function escapeHtml(str) { return String(str || '').replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
-    setTimeout(() => {
-        // Restaurar focus a donde estaba
-        if(S.lastFocus && S.lastFocus.classList) {
-            if(S.lastFocus.classList.contains('card')) {
-                const cards = getCards();
-                const idx = cards.indexOf(S.lastFocus);
-                if(idx >= 0) {
-                    setFocusGrid(idx);
-                } else {
-                    setFocusHeader(0);
+    function initLazyImages() {
+        const imgs = document.querySelectorAll('.movie-card img[data-src]');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    const src = img.dataset.src;
+                    if (src && !img.classList.contains('loaded')) {
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            img.src = src;
+                            img.classList.add('loaded');
+                        };
+                        tempImg.onerror = () => { img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 3"%3E%3Crect width="100%25" height="100%25" fill="%23333"/%3E%3Ctext x="50%25" y="50%25" fill="%23666" font-size="0.2"%3E🎬%3C/text%3E%3C/svg%3E'; img.classList.add('loaded'); };
+                        tempImg.src = src;
+                    }
+                    observer.unobserve(img);
                 }
-            } else {
-                // Es un elemento del header
-                const idx = S.headerElements.indexOf(S.lastFocus);
-                if(idx >= 0) {
-                    setFocusHeader(idx);
-                } else {
-                    setFocusHeader(0);
-                }
+            });
+        }, { rootMargin: '200px' });
+        imgs.forEach(img => observer.observe(img));
+    }
+
+    function recalcGridColumns() {
+        const firstRow = moviesGrid.children[0];
+        if (!firstRow) return;
+        const firstRect = firstRow.getBoundingClientRect();
+        let cols = 1;
+        for (let i = 1; i < moviesGrid.children.length; i++) {
+            const rect = moviesGrid.children[i].getBoundingClientRect();
+            if (Math.abs(rect.top - firstRect.top) < 20) cols++;
+            else break;
+        }
+        gridColumns = Math.max(1, cols);
+    }
+
+    // SISTEMA DE FOCUS Y NAVEGACIÓN (teclado estilo smart TV)
+    function setFocusHeader(element, index) {
+        if (currentFocus) currentFocus.classList.remove('f');
+        focusType = 'header';
+        currentGridIndex = -1;
+        currentFocus = element;
+        if (currentFocus) currentFocus.classList.add('f');
+        if (element === searchInput) searchInput.focus();
+        else searchInput.blur();
+    }
+
+    function setFocusGrid(index) {
+        const cards = [...document.querySelectorAll('.movie-card')];
+        if (!cards.length || index < 0 || index >= cards.length) return;
+        if (currentFocus) currentFocus.classList.remove('f');
+        focusType = 'grid';
+        currentGridIndex = index;
+        currentFocus = cards[index];
+        currentFocus.classList.add('f');
+        currentFocus.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        searchInput.blur();
+    }
+
+    function navigateGrid(direction) {
+        const cards = [...document.querySelectorAll('.movie-card')];
+        if (!cards.length) return false;
+        let newIdx = currentGridIndex;
+        if (direction === 'ArrowUp') {
+            if (currentGridIndex - gridColumns < 0) {
+                setFocusHeader(logoBtn, 0);
+                return true;
             }
-        } else {
-            setFocusHeader(0);
+            newIdx = Math.max(0, currentGridIndex - gridColumns);
+        } else if (direction === 'ArrowDown') {
+            newIdx = Math.min(cards.length-1, currentGridIndex + gridColumns);
+        } else if (direction === 'ArrowLeft') {
+            if (currentGridIndex % gridColumns === 0) {
+                setFocusHeader(searchInput, 1);
+                return true;
+            }
+            newIdx = Math.max(0, currentGridIndex - 1);
+        } else if (direction === 'ArrowRight') {
+            if ((currentGridIndex+1) % gridColumns === 0 || currentGridIndex === cards.length-1) return false;
+            newIdx = Math.min(cards.length-1, currentGridIndex + 1);
         }
-    }, 50);
-}
+        if (newIdx !== currentGridIndex) setFocusGrid(newIdx);
+        return true;
+    }
 
-el.vid.onloadstart = () => {
-    el.pLoad.classList.add('show');
-    el.pErr.classList.remove('show');
-    el.pLoadTxt.textContent = 'Conectando...';
-};
-
-el.vid.oncanplay = () => {
-    el.pLoad.classList.remove('show');
-    S.retry = 0;
-};
-
-el.vid.onwaiting = () => {
-    el.pLoad.classList.add('show');
-    el.pLoadTxt.textContent = 'Buffering...';
-};
-
-el.vid.onplaying = () => {
-    el.pLoad.classList.remove('show');
-    S.playing = true;
-    el.pPp.textContent = '⏸';
-};
-
-el.vid.onpause = () => {
-    S.playing = false;
-    el.pPp.textContent = '▶';
-};
-
-el.vid.ontimeupdate = () => {
-    if(!el.vid.duration) return;
-    el.pFill.style.width = (el.vid.currentTime / el.vid.duration * 100) + '%';
-    el.pCur.textContent = fmt(el.vid.currentTime);
-};
-
-el.vid.ondurationchange = () => el.pDur.textContent = fmt(el.vid.duration);
-
-el.vid.onprogress = () => {
-    try {
-        if(el.vid.buffered.length) {
-            el.pBuf.style.width = (el.vid.buffered.end(el.vid.buffered.length - 1) / el.vid.duration * 100) + '%';
+    function navigateHeader(direction) {
+        const headers = [logoBtn, searchInput, mixBtn];
+        let currentIdx = headers.indexOf(currentFocus);
+        if (direction === 'ArrowRight') currentIdx = Math.min(headers.length-1, currentIdx+1);
+        else if (direction === 'ArrowLeft') currentIdx = Math.max(0, currentIdx-1);
+        else if (direction === 'ArrowDown') {
+            const cards = [...document.querySelectorAll('.movie-card')];
+            if (cards.length) setFocusGrid(0);
+            return true;
         }
-    } catch(e) {}
-};
-
-el.vid.onerror = () => {
-    const err = el.vid.error;
-    el.pErrTxt.textContent = err ? ['','Abortado','Red','Decode','No soportado'][err.code] || 'Error' : 'Error';
-    if(err && err.code === 2 && S.retry < 2) {
-        S.retry++;
-        el.pLoadTxt.textContent = 'Reintentando...';
-        setTimeout(retry, 1500);
-    } else {
-        el.pLoad.classList.remove('show');
-        el.pErr.classList.add('show');
+        setFocusHeader(headers[currentIdx], currentIdx);
+        return true;
     }
-};
 
-el.vid.onended = () => {
-    S.playing = false;
-    el.pPp.textContent = '▶';
-    showUI();
-};
-
-function playErr(e) {
-    if(e.name === 'NotAllowedError') showUI();
-    else if(e.name === 'NotSupportedError') {
-        el.pErrTxt.textContent = 'No soportado';
-        el.pErr.classList.add('show');
-        el.pLoad.classList.remove('show');
+    // Cargar contenido principal
+    async function loadMoviesAndRender(query = '', random = false) {
+        moviesGrid.innerHTML = '<div class="loading-message"><div class="loading-spinner"></div>Cargando...</div>';
+        const movies = await fetchMovies(query, random);
+        currentMoviesList = movies;
+        renderGrid(movies);
+        if (movies.length && focusType === 'header') {
+            // mantener header
+        } else if (movies.length && currentGridIndex === -1) {
+            setFocusGrid(0);
+        } else if (!movies.length) {
+            setFocusHeader(searchInput, 1);
+        }
     }
-}
 
-function retry() {
-    el.pErr.classList.remove('show');
-    el.pLoad.classList.add('show');
-    const t = el.vid.currentTime || 0;
-    el.vid.pause();
-    el.vid.load();
-    setTimeout(() => {
-        el.vid.currentTime = t;
-        el.vid.play().catch(playErr);
-    }, 300);
-}
-
-function playerKey(k) {
-    showUI();
-    if(k === 'ArrowLeft') seek(-10);
-    else if(k === 'ArrowRight') seek(10);
-    else if(k === 'ArrowUp') vol(.1);
-    else if(k === 'ArrowDown') vol(-.1);
-    else if(k === 'Enter' || k === ' ') toggle();
-    else if(k === 'Escape' || k === 'Backspace') history.back();
-}
-
-function toggle() {
-    if(el.vid.paused) {
-        el.vid.play().catch(playErr);
-        showInd('▶');
-    } else {
-        el.vid.pause();
-        showInd('⏸');
+    // Reproductor
+    function playMovie(movie) {
+        if (!movie || !movie.url) return;
+        currentMovieObj = movie;
+        playerActive = true;
+        playerOverlay.classList.add('open');
+        playerTitleSpan.innerText = movie.title;
+        videoPlayer.pause();
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
+        playerLoading.classList.add('show');
+        playerError.classList.remove('show');
+        loadingTextSpan.innerText = 'Conectando...';
+        let videoUrl = movie.url;
+        if (videoUrl.startsWith('http') && !videoUrl.includes(location.hostname)) {
+            videoUrl = `/video-proxy?url=${encodeURIComponent(videoUrl)}`;
+        }
+        videoPlayer.src = videoUrl;
+        videoPlayer.play().catch(e => { onPlayerError(e); });
+        showPlayerUI();
     }
-}
 
-function seek(s) {
-    if(!el.vid.duration) return;
-    el.vid.currentTime = Math.max(0, Math.min(el.vid.currentTime + s, el.vid.duration));
-    showInd((s > 0 ? '+' : '') + s + 's');
-}
-
-function vol(d) {
-    try {
-        el.vid.volume = Math.max(0, Math.min(1, el.vid.volume + d));
-    } catch(e) {}
-}
-
-let hideT, indT;
-function showInd(t) {
-    el.pInd.textContent = t;
-    el.pInd.classList.add('show');
-    clearTimeout(indT);
-    indT = setTimeout(() => el.pInd.classList.remove('show'), 500);
-}
-
-function showUI() {
-    el.pUi.classList.remove('hide');
-    clearTimeout(hideT);
-    hideT = setTimeout(() => {
-        if(S.playing) el.pUi.classList.add('hide');
-    }, 3000);
-}
-
-function fmt(s) {
-    if(!s || !isFinite(s)) return '0:00';
-    const h = ~~(s / 3600);
-    const m = ~~(s % 3600 / 60);
-    const ss = ~~(s % 60);
-    return h ? h + ':' + String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0') : m + ':' + String(ss).padStart(2, '0');
-}
-
-// Eventos del reproductor
-el.pPp.onclick = toggle;
-el.pRw.onclick = () => seek(-10);
-el.pFw.onclick = () => seek(10);
-el.pBar.onclick = e => {
-    const r = el.pBar.getBoundingClientRect();
-    if(el.vid.duration) el.vid.currentTime = (e.clientX - r.left) / r.width * el.vid.duration;
-};
-el.pRetry.onclick = retry;
-el.pBack.onclick = () => history.back();
-el.player.onclick = e => {
-    if(e.target === el.vid) {
-        toggle();
-        showUI();
+    function closePlayer() {
+        playerOverlay.classList.remove('open');
+        videoPlayer.pause();
+        videoPlayer.src = '';
+        playerActive = false;
+        // restaurar focus
+        setTimeout(() => {
+            if (currentMoviesList.length && focusType === 'grid' && currentGridIndex >= 0 && currentGridIndex < currentMoviesList.length) {
+                setFocusGrid(currentGridIndex);
+            } else if (currentMoviesList.length) setFocusGrid(0);
+            else setFocusHeader(logoBtn,0);
+        }, 100);
     }
-};
-el.player.onmousemove = showUI;
 
-let tx, ty;
-el.vid.ontouchstart = e => {
-    tx = e.touches[0].clientX;
-    ty = e.touches[0].clientY;
-};
-el.vid.ontouchend = e => {
-    const dx = e.changedTouches[0].clientX - tx;
-    const dy = e.changedTouches[0].clientY - ty;
-    if(Math.abs(dx) > 50 && Math.abs(dy) < 50) seek(dx > 0 ? 10 : -10);
-    else showUI();
-};
-el.pBar.ontouchstart = el.pBar.ontouchmove = e => {
-    e.preventDefault();
-    const r = el.pBar.getBoundingClientRect();
-    if(el.vid.duration) {
-        el.vid.currentTime = Math.max(0, Math.min(1, (e.touches[0].clientX - r.left) / r.width)) * el.vid.duration;
+    function onPlayerError(err) {
+        playerLoading.classList.remove('show');
+        playerError.classList.add('show');
     }
-};
 
-function esc(s) {
-    return s ? String(s).replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    })[c]) : '';
-}
+    function retryPlay() {
+        if (!currentMovieObj) return;
+        playerError.classList.remove('show');
+        playerLoading.classList.add('show');
+        videoPlayer.load();
+        videoPlayer.play().catch(onPlayerError);
+    }
 
-// Iniciar aplicación
-init();
+    videoPlayer.addEventListener('canplay', () => {
+        playerLoading.classList.remove('show');
+    });
+    videoPlayer.addEventListener('waiting', () => {
+        playerLoading.classList.add('show');
+        loadingTextSpan.innerText = 'Buffering...';
+    });
+    videoPlayer.addEventListener('playing', () => {
+        playerLoading.classList.remove('show');
+        playPauseBtn.innerText = '⏸';
+    });
+    videoPlayer.addEventListener('pause', () => { playPauseBtn.innerText = '▶'; });
+    videoPlayer.addEventListener('timeupdate', () => {
+        if (!videoPlayer.duration) return;
+        const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+        progressFill.style.width = `${percent}%`;
+        currentTimeSpan.innerText = formatTime(videoPlayer.currentTime);
+    });
+    videoPlayer.addEventListener('durationchange', () => {
+        durationTimeSpan.innerText = formatTime(videoPlayer.duration);
+    });
+    videoPlayer.addEventListener('progress', () => {
+        if (videoPlayer.buffered.length) {
+            const bufferedEnd = videoPlayer.buffered.end(videoPlayer.buffered.length-1);
+            const bufPercent = (bufferedEnd / videoPlayer.duration) * 100;
+            bufferedBar.style.width = `${bufPercent}%`;
+        }
+    });
+    videoPlayer.onerror = () => { onPlayerError(); };
 
-// Recalcular columnas al redimensionar
-let resizeTimer;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-        calculateGridColumns();
-    }, 150);
-});
-})();
-</script></body></html>`));
+    function togglePlay() { if (videoPlayer.paused) videoPlayer.play(); else videoPlayer.pause(); showPlayerUI(); }
+    function seek(seconds) { if (videoPlayer.duration) { videoPlayer.currentTime = Math.min(videoPlayer.duration, Math.max(0, videoPlayer.currentTime + seconds)); showIndicator((seconds>0?'+':'')+seconds+'s'); showPlayerUI(); } }
+    function showIndicator(text) { centerIndicator.innerText = text; centerIndicator.style.opacity = '1'; clearTimeout(indicatorTimer); indicatorTimer = setTimeout(() => centerIndicator.style.opacity = '0', 600); }
+    function showPlayerUI() { playerUi.classList.remove('hide'); clearTimeout(hideUITimer); if (!videoPlayer.paused) hideUITimer = setTimeout(() => playerUi.classList.add('hide'), 3000); }
+    function formatTime(sec) { if (!sec || isNaN(sec)) return '0:00'; const hrs = Math.floor(sec/3600); const mins = Math.floor((sec%3600)/60); const secs = Math.floor(sec%60); return hrs ? `${hrs}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}` : `${mins}:${secs.toString().padStart(2,'0')}`; }
 
-app.listen(PORT,'0.0.0.0',()=>console.log('🎬 Movies+ → Puerto '+PORT+' | '+MOVIES.length+' películas'));
+    // Event listeners teclado global
+    document.addEventListener('keydown', (e) => {
+        const key = e.key;
+        if (playerActive) {
+            if (key === 'Escape' || key === 'Backspace') { e.preventDefault(); closePlayer(); }
+            else if (key === 'ArrowLeft') { e.preventDefault(); seek(-10); }
+            else if (key === 'ArrowRight') { e.preventDefault(); seek(10); }
+            else if (key === 'ArrowUp' || key === 'ArrowDown') { e.preventDefault(); if (videoPlayer.volume) videoPlayer.volume = Math.min(1,Math.max(0, videoPlayer.volume + (key==='ArrowUp'?0.1:-0.1))); showPlayerUI(); }
+            else if (key === 'Enter' || key === ' ') { e.preventDefault(); togglePlay(); showPlayerUI(); }
+            return;
+        }
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' ','Escape','Backspace','Tab'].includes(key)) e.preventDefault();
+        if (key === 'Escape') { if (searchInput.value) { searchInput.value = ''; loadMoviesAndRender(''); setFocusHeader(searchInput,1); } else if (focusType === 'grid') setFocusHeader(logoBtn,0); return; }
+        if (key === 'Enter' || key === ' ') {
+            if (focusType === 'header' && currentFocus === mixBtn) loadMoviesAndRender('', true);
+            else if (focusType === 'header' && currentFocus === logoBtn) location.reload();
+            else if (focusType === 'header' && currentFocus === searchInput) loadMoviesAndRender(searchInput.value, false);
+            else if (focusType === 'grid' && currentFocus && currentMoviesList[currentGridIndex]) playMovie(currentMoviesList[currentGridIndex]);
+            return;
+        }
+        if (key === 'Tab') { e.preventDefault(); const headers = [logoBtn, searchInput, mixBtn]; let idx = headers.indexOf(currentFocus); let next = (idx+1)%headers.length; setFocusHeader(headers[next], next); return; }
+        if (key === 'Backspace') { if (focusType === 'grid') setFocusHeader(logoBtn,0); else if (searchInput.value.length) return; else setFocusHeader(logoBtn,0); return; }
+        if (key.startsWith('Arrow')) {
+            if (focusType === 'grid') navigateGrid(key);
+            else if (focusType === 'header') navigateHeader(key);
+        }
+    });
+
+    // Eventos UI
+    logoBtn.addEventListener('click', () => location.reload());
+    mixBtn.addEventListener('click', () => loadMoviesAndRender('', true));
+    heroWatchBtn.addEventListener('click', () => {
+        const moneyHeistMovie = currentMoviesList.find(m => m.title.toLowerCase().includes('money heist') || m.title.toLowerCase().includes('casa de papel'));
+        if (moneyHeistMovie) playMovie(moneyHeistMovie);
+        else if (currentMoviesList.length) playMovie(currentMoviesList[0]);
+    });
+    searchInput.addEventListener('input', (e) => { loadMoviesAndRender(e.target.value, false); });
+    searchInput.addEventListener('focus', () => setFocusHeader(searchInput,1));
+    logoBtn.addEventListener('focus', () => setFocusHeader(logoBtn,0));
+    mixBtn.addEventListener('focus', () => setFocusHeader(mixBtn,2));
+    playPauseBtn.addEventListener('click', togglePlay);
+    rewindBtn.addEventListener('click', () => seek(-10));
+    forwardBtn.addEventListener('click', () => seek(10));
+    progressBar.addEventListener('click', (e) => { if(videoPlayer.duration){ const rect = progressBar.getBoundingClientRect(); const percent = (e.clientX-rect.left)/rect.width; videoPlayer.currentTime = percent * videoPlayer.duration; showPlayerUI(); } });
+    retryBtn.addEventListener('click', retryPlay);
+    closeErrorBtn.addEventListener('click', closePlayer);
+    window.addEventListener('resize', () => recalcGridColumns());
+
+    // Inicializar
+    (async () => {
+        await loadMoviesAndRender('', false);
+        setFocusHeader(logoBtn, 0);
+    })();
+</script>
+</body>
+</html>
