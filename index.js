@@ -63,7 +63,6 @@ app.get('/', (req, res) => res.send(`<!DOCTYPE html><html lang="es"><head>
 :root{--primary:#e50914;--dark:#0f0f0f;--dark2:#1a1a1a;--dark3:#2a2a2a;--light:#fff;--light2:#b3b3b3}
 html,body{background:var(--dark);color:var(--light);font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;height:100%;overflow:hidden}
 #app{height:100%;display:flex;flex-direction:row}
-/* SIDEBAR */
 .sidebar{width:240px;background:linear-gradient(135deg,#1a1a1a 0%,#0f0f0f 100%);border-right:1px solid var(--dark3);overflow-y:auto;padding:20px 0;display:flex;flex-direction:column}
 .logo-box{padding:0 20px 30px;border-bottom:1px solid var(--dark3)}
 .logo{color:var(--primary);font-weight:900;font-size:28px;letter-spacing:-1px;text-transform:uppercase}
@@ -73,17 +72,14 @@ html,body{background:var(--dark);color:var(--light);font-family:'Segoe UI',Tahom
 .nav-item{padding:10px 20px;color:var(--light2);font-size:14px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:10px}
 .nav-item:hover,.nav-item.active{color:var(--light);background:rgba(229,9,20,0.1);border-left:3px solid var(--primary);padding-left:17px}
 .nav-icon{width:20px;text-align:center}
-/* MAIN CONTENT */
 .main-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
-/* TOP BAR */
 .top-bar{background:linear-gradient(135deg,#1a1a1a 0%,#0f0f0f 100%);padding:15px 30px;display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--dark3);z-index:100}
 .search-box{flex:1;max-width:400px}
 .search-input{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:var(--light);padding:10px 15px;border-radius:4px;font-size:14px;transition:all 0.2s}
 .search-input:focus{outline:none;background:rgba(255,255,255,0.15);border-color:var(--primary)}
 .search-input::placeholder{color:var(--light2)}
 .user-profile{width:40px;height:40px;background:var(--primary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer}
-/* HERO SECTION */
-.hero{position:relative;height:350px;background:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.7)),url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%231a1a1a%22 width=%22100%22 height=%22100%22/></svg>');background-size:cover;background-position:center;overflow:hidden;display:flex;align-items:flex-end;padding:50px}
+.hero{position:relative;height:350px;background:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.7)),url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%221%22 height=%221%22><rect fill=%22%231a1a1a%22 width=%221%22 height=%221%22/></svg>');background-size:cover;background-position:center;overflow:hidden;display:flex;align-items:flex-end;padding:50px}
 .hero-content{z-index:10;max-width:500px}
 .hero-title{font-size:48px;font-weight:900;margin-bottom:15px;text-transform:uppercase;letter-spacing:-1px}
 .hero-rating{display:flex;align-items:center;gap:15px;margin-bottom:20px;font-size:14px}
@@ -96,12 +92,9 @@ html,body{background:var(--dark);color:var(--light);font-family:'Segoe UI',Tahom
 .btn-play:hover{background:#e0e0e0;transform:scale(1.05)}
 .btn-info{background:rgba(109,109,110,0.7);color:var(--light)}
 .btn-info:hover{background:rgba(109,109,110,0.9)}
-/* SCROLL AREA */
 .scroll-area{flex:1;overflow-y:auto;padding:40px 30px;-webkit-overflow-scrolling:touch}
-/* SECTION */
 .section{margin-bottom:50px}
 .section-title{font-size:24px;font-weight:700;margin-bottom:20px;padding-left:0}
-/* CAROUSEL */
 .carousel{display:flex;gap:8px;overflow-x:auto;scroll-behavior:smooth;padding:10px 0;-webkit-overflow-scrolling:touch}
 .carousel::-webkit-scrollbar{height:6px}
 .carousel::-webkit-scrollbar-track{background:var(--dark2)}
@@ -113,7 +106,6 @@ html,body{background:var(--dark);color:var(--light);font-family:'Segoe UI',Tahom
 .card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.9));padding:15px 10px 10px;opacity:0;transition:opacity 0.2s}
 .card:hover .card-overlay{opacity:1}
 .card-title{font-size:12px;font-weight:600;line-height:1.4}
-/* PLAYER */
 .player{position:fixed;inset:0;background:#000;z-index:200;display:none;flex-direction:column}
 .player.open{display:flex}
 video{flex:1;width:100%;background:#000}
@@ -137,7 +129,7 @@ video{flex:1;width:100%;background:#000}
 .p-load,.p-err{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;display:none;color:var(--light)}
 .p-load.show,.p-err.show{display:block}
 .p-spin{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 15px}
-.msg{text-align:center;padding:40px;color:var(--light2)}
+.msg{text-align:center;padding:40px;color:var(--light2);font-size:16px}
 .msg.load::after{content:'';display:block;width:24px;height:24px;margin:15px auto 0;border:3px solid rgba(255,255,255,0.2);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:768px){
@@ -148,7 +140,8 @@ video{flex:1;width:100%;background:#000}
     .hero{height:200px;padding:30px}
     .hero-title{font-size:32px}
     .card{min-width:140px;height:210px}
-}</style></head><body>
+}
+</style></head><body>
 <div id="app">
     <div class="sidebar" id="sidebar">
         <div class="logo-box">
@@ -172,19 +165,19 @@ video{flex:1;width:100%;background:#000}
             <div class="search-box">
                 <input class="search-input" id="srch" placeholder="Buscar películas..." autocomplete="off">
             </div>
-            <button class="btn-info" style="margin-left:auto;padding:8px 16px;">🎲 Aleatorio</button>
+            <button class="btn-info" id="randomBtn" style="margin-left:auto;padding:8px 16px;">🎲 Aleatorio</button>
             <div class="user-profile">MH</div>
         </div>
 
         <div class="scroll-area" id="scrollArea">
             <div class="hero" id="hero">
                 <div class="hero-content">
-                    <div class="hero-title">Bienvenido</div>
+                    <div class="hero-title" id="heroTitle">Bienvenido</div>
                     <div class="hero-rating">
                         <span class="rating-badge">HD</span>
-                        <span class="match-score">97% Match</span>
+                        <span class="match-score" id="heroMatch">97% Match</span>
                     </div>
-                    <div class="hero-desc">Explora miles de películas y series seleccionadas especialmente para ti.</div>
+                    <div class="hero-desc" id="heroDesc">Explora miles de películas y series seleccionadas especialmente para ti.</div>
                     <div class="hero-buttons">
                         <button class="btn-play" id="heroPlay">▶ Reproducir</button>
                         <button class="btn-info" id="heroInfo">ℹ️ Información</button>
@@ -231,196 +224,285 @@ video{flex:1;width:100%;background:#000}
 
 <script>
 (function(){
-const $=id=>document.getElementById(id);
-const el={
-    logo:$('logo'), grid:$('grid'), srch:$('srch'), scrollArea:$('scrollArea'),
-    player:$('player'), vid:$('vid'), pUi:$('pUi'), pTitle:$('pTitle'),
-    pLoad:$('pLoad'), pErr:$('pErr'), pBar:$('pBar'), pFill:$('pFill'),
-    pBuf:$('pBuf'), pCur:$('pCur'), pDur:$('pDur'), pRw:$('pRw'), pPp:$('pPp'),
-    pFw:$('pFw'), pBack:$('pBack'), hero:$('hero'), heroPlay:$('heroPlay'),
-    heroInfo:$('heroInfo'), sidebar:$('sidebar')
+const $ = id => document.getElementById(id);
+const el = {
+    grid: $('grid'), srch: $('srch'), scrollArea: $('scrollArea'),
+    player: $('player'), vid: $('vid'), pUi: $('pUi'), pTitle: $('pTitle'),
+    pLoad: $('pLoad'), pErr: $('pErr'), pBar: $('pBar'), pFill: $('pFill'),
+    pBuf: $('pBuf'), pCur: $('pCur'), pDur: $('pDur'), pRw: $('pRw'), pPp: $('pPp'),
+    pFw: $('pFw'), pBack: $('pBack'), hero: $('hero'), heroPlay: $('heroPlay'),
+    heroTitle: $('heroTitle'), heroMatch: $('heroMatch'), heroDesc: $('heroDesc'),
+    randomBtn: $('randomBtn')
 };
 
-const S={view:'home', movies:[], playing:false, retry:0, currentMovie:null};
+const S = { view: 'home', movies: [], playing: false, retry: 0, currentMovie: null, totalMovies: 0 };
 
-function init(){
+function esc(s) {
+    return (s || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+}
+
+function init() {
+    console.log('🎬 Iniciando carga de películas...');
+    el.grid.innerHTML = '<div class="msg load">Cargando películas...</div>';
+    
     fetch('/api/movies?limit=200&random=true')
-        .then(r=>r.json())
-        .then(d=>{
-            S.movies=d.data;
-            d.data.forEach(m=>el.grid.appendChild(mkCard(m)));
-            if(d.data.length>0) updateHero(d.data[0]);
-        })
-        .catch(()=>el.grid.innerHTML='<div class="msg">Error</div>');
-}
-
-function updateHero(m){
-    el.hero.style.background='linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.8)),url('+esc(m.poster)+')';
-    el.hero.style.backgroundSize='cover';
-    el.hero.style.backgroundPosition='center';
-}
-
-function mkCard(m){
-    const d=document.createElement('div');
-    d.className='card';
-    d.innerHTML='<img data-src="'+esc(m.poster)+'" alt="'+esc(m.title)+'"><div class="card-overlay"><div class="card-title">'+esc(m.title)+'</div></div>';
-    d.onclick=()=>play(m);
-    
-    const img=d.querySelector('img');
-    const io=new IntersectionObserver(entries=>{
-        entries.forEach(entry=>{
-            if(entry.isIntersecting && img.dataset.src && !img.classList.contains('loaded')){
-                const imgEl=new Image();
-                imgEl.onload=()=>{img.src=img.dataset.src;img.classList.add('loaded')};
-                imgEl.onerror=()=>{img.classList.add('loaded')};
-                setTimeout(()=>imgEl.src=img.dataset.src,50);
-                io.unobserve(img);
+        .then(r => r.json())
+        .then(d => {
+            console.log('✓ Películas cargadas:', d.total);
+            S.movies = d.data;
+            S.totalMovies = d.total;
+            
+            if (d.data.length > 0) {
+                el.grid.innerHTML = '';
+                d.data.forEach(m => {
+                    el.grid.appendChild(mkCard(m));
+                });
+                updateHero(d.data[0]);
+            } else {
+                el.grid.innerHTML = '<div class="msg">No hay películas disponibles</div>';
             }
+        })
+        .catch(err => {
+            console.error('❌ Error cargando películas:', err);
+            el.grid.innerHTML = '<div class="msg">Error al cargar películas. Verifica que data.json esté en el servidor.</div>';
         });
-    },{rootMargin:'200px'});
-    io.observe(img);
+}
+
+function updateHero(m) {
+    const bgImage = m.poster ? \`url('\${esc(m.poster)}')\` : 'linear-gradient(135deg, #2a2a2a, #1a1a1a)';
+    el.hero.style.backgroundImage = \`linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.7)), \${bgImage}\`;
+    el.heroTitle.textContent = m.title;
+    el.heroDesc.textContent = m.title.substring(0, 50) + '...';
+}
+
+function mkCard(m) {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = '<img data-src="' + esc(m.poster) + '" alt="' + esc(m.title) + '"><div class="card-overlay"><div class="card-title">' + esc(m.title) + '</div></div>';
+    d.onclick = () => play(m);
     
+    lazyLoadImage(d.querySelector('img'));
     return d;
 }
 
-function play(m){
-    S.currentMovie=m;
-    S.view='player';
-    S.retry=0;
+function lazyLoadImage(img) {
+    if (!img.dataset.src) return;
+    
+    const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !img.classList.contains('loaded')) {
+                const imgEl = new Image();
+                imgEl.onload = () => {
+                    img.src = img.dataset.src;
+                    img.classList.add('loaded');
+                };
+                imgEl.onerror = () => {
+                    img.classList.add('loaded');
+                };
+                setTimeout(() => {
+                    imgEl.src = img.dataset.src;
+                }, 50);
+                io.unobserve(img);
+            }
+        });
+    }, { rootMargin: '200px' });
+    
+    io.observe(img);
+}
+
+function play(m) {
+    S.currentMovie = m;
+    S.view = 'player';
+    S.retry = 0;
     el.pErr.classList.remove('show');
     el.pLoad.classList.add('show');
-    el.pTitle.textContent=m.title;
+    el.pTitle.textContent = m.title;
     el.player.classList.add('open');
     el.vid.pause();
-    el.vid.src='';
+    el.vid.src = '';
     
-    setTimeout(()=>{
-        let u=m.url;
-        if(u.startsWith('http://') || location.protocol==='https:'){
-            u='/video-proxy?url='+encodeURIComponent(u);
+    setTimeout(() => {
+        let u = m.url;
+        if (u.startsWith('http://') || location.protocol === 'https:') {
+            u = '/video-proxy?url=' + encodeURIComponent(u);
         }
-        el.vid.src=u;
-        el.vid.play().catch(e=>{
-            if(e.name!=='NotAllowedError') el.pErr.classList.add('show');
+        el.vid.src = u;
+        el.vid.play().catch(e => {
+            if (e.name !== 'NotAllowedError') {
+                el.pErr.classList.add('show');
+            }
             el.pLoad.classList.remove('show');
         });
         showUI();
-    },50);
+    }, 50);
 }
 
-function closeP(){
+function closeP() {
     el.vid.pause();
-    el.vid.src='';
+    el.vid.src = '';
     el.player.classList.remove('open');
-    S.view='home';
+    S.view = 'home';
 }
 
-el.vid.onloadstart=()=>{el.pLoad.classList.add('show');el.pErr.classList.remove('show')};
-el.vid.oncanplay=()=>{el.pLoad.classList.remove('show');S.retry=0};
-el.vid.onwaiting=()=>el.pLoad.classList.add('show');
-el.vid.onplaying=()=>{el.pLoad.classList.remove('show');S.playing=true;el.pPp.textContent='⏸'};
-el.vid.onpause=()=>{S.playing=false;el.pPp.textContent='▶'};
-el.vid.ontimeupdate=()=>{
-    if(!el.vid.duration) return;
-    el.pFill.style.width=(el.vid.currentTime/el.vid.duration*100)+'%';
-    el.pCur.textContent=fmt(el.vid.currentTime);
+el.vid.onloadstart = () => {
+    el.pLoad.classList.add('show');
+    el.pErr.classList.remove('show');
 };
-el.vid.ondurationchange=()=>el.pDur.textContent=fmt(el.vid.duration);
-el.vid.onprogress=()=>{
-    try{
-        if(el.vid.buffered.length) el.pBuf.style.width=(el.vid.buffered.end(el.vid.buffered.length-1)/el.vid.duration*100)+'%';
-    }catch(e){}
+
+el.vid.oncanplay = () => {
+    el.pLoad.classList.remove('show');
+    S.retry = 0;
 };
-el.vid.onerror=()=>{
-    if(el.vid.error && el.vid.error.code===2 && S.retry<2){
+
+el.vid.onwaiting = () => el.pLoad.classList.add('show');
+
+el.vid.onplaying = () => {
+    el.pLoad.classList.remove('show');
+    S.playing = true;
+    el.pPp.textContent = '⏸';
+};
+
+el.vid.onpause = () => {
+    S.playing = false;
+    el.pPp.textContent = '▶';
+};
+
+el.vid.ontimeupdate = () => {
+    if (!el.vid.duration) return;
+    el.pFill.style.width = (el.vid.currentTime / el.vid.duration * 100) + '%';
+    el.pCur.textContent = fmt(el.vid.currentTime);
+};
+
+el.vid.ondurationchange = () => el.pDur.textContent = fmt(el.vid.duration);
+
+el.vid.onprogress = () => {
+    try {
+        if (el.vid.buffered.length) {
+            el.pBuf.style.width = (el.vid.buffered.end(el.vid.buffered.length - 1) / el.vid.duration * 100) + '%';
+        }
+    } catch (e) {}
+};
+
+el.vid.onerror = () => {
+    if (el.vid.error && el.vid.error.code === 2 && S.retry < 2) {
         S.retry++;
-        setTimeout(()=>{
-            const t=el.vid.currentTime||0;
+        setTimeout(() => {
+            const t = el.vid.currentTime || 0;
             el.vid.load();
-            setTimeout(()=>{el.vid.currentTime=t;el.vid.play().catch(e=>{})},300);
-        },1500);
-    }else{
+            setTimeout(() => {
+                el.vid.currentTime = t;
+                el.vid.play().catch(e => {});
+            }, 300);
+        }, 1500);
+    } else {
         el.pLoad.classList.remove('show');
         el.pErr.classList.add('show');
     }
 };
 
-function toggle(){
-    if(el.vid.paused){
-        el.vid.play().catch(e=>{});
-    }else{
+function toggle() {
+    if (el.vid.paused) {
+        el.vid.play().catch(e => {});
+    } else {
         el.vid.pause();
     }
 }
 
-function seek(s){
-    if(!el.vid.duration) return;
-    el.vid.currentTime=Math.max(0,Math.min(el.vid.currentTime+s,el.vid.duration));
+function seek(s) {
+    if (!el.vid.duration) return;
+    el.vid.currentTime = Math.max(0, Math.min(el.vid.currentTime + s, el.vid.duration));
 }
 
 let hideT;
-function showUI(){
+function showUI() {
     el.pUi.classList.remove('hide');
     clearTimeout(hideT);
-    hideT=setTimeout(()=>{
-        if(S.playing) el.pUi.classList.add('hide');
-    },3000);
+    hideT = setTimeout(() => {
+        if (S.playing) el.pUi.classList.add('hide');
+    }, 3000);
 }
 
-function fmt(s){
-    if(!s||!isFinite(s)) return '0:00';
-    const h=~~(s/3600);
-    const m=~~(s%3600/60);
-    const ss=~~(s%60);
-    return h?h+':'+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0'):m+':'+String(ss).padStart(2,'0');
+function fmt(s) {
+    if (!s || !isFinite(s)) return '0:00';
+    const h = ~~(s / 3600);
+    const m = ~~(s % 3600 / 60);
+    const ss = ~~(s % 60);
+    return h ? h + ':' + String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0') : m + ':' + String(ss).padStart(2, '0');
 }
 
-el.pPp.onclick=toggle;
-el.pRw.onclick=()=>seek(-10);
-el.pFw.onclick=()=>seek(10);
-el.pBar.onclick=e=>{
-    const r=el.pBar.getBoundingClientRect();
-    if(el.vid.duration) el.vid.currentTime=(e.clientX-r.left)/r.width*el.vid.duration;
+el.pPp.onclick = toggle;
+el.pRw.onclick = () => seek(-10);
+el.pFw.onclick = () => seek(10);
+el.pBar.onclick = e => {
+    const r = el.pBar.getBoundingClientRect();
+    if (el.vid.duration) el.vid.currentTime = (e.clientX - r.left) / r.width * el.vid.duration;
 };
-el.pBack.onclick=closeP;
-el.player.onclick=e=>{if(e.target===el.vid){toggle();showUI()}};
-el.player.onmousemove=showUI;
-el.player.ontouchend=showUI;
+el.pBack.onclick = closeP;
+el.player.onclick = e => {
+    if (e.target === el.vid) {
+        toggle();
+        showUI();
+    }
+};
+el.player.onmousemove = showUI;
 
-document.onkeydown=e=>{
-    if(S.view==='player'){
-        if(e.key==='ArrowLeft') seek(-10);
-        else if(e.key==='ArrowRight') seek(10);
-        else if(e.key==='Enter'||e.key===' ') toggle();
-        else if(e.key==='Escape') closeP();
+document.onkeydown = e => {
+    if (S.view === 'player') {
+        if (e.key === 'ArrowLeft') seek(-10);
+        else if (e.key === 'ArrowRight') seek(10);
+        else if (e.key === 'Enter' || e.key === ' ') toggle();
+        else if (e.key === 'Escape') closeP();
     }
 };
 
 let searchTimer;
-el.srch.oninput=()=>{
+el.srch.oninput = () => {
     clearTimeout(searchTimer);
-    searchTimer=setTimeout(()=>{
-        const q=el.srch.value.trim();
-        if(q){
-            fetch('/api/movies?q='+encodeURIComponent(q))
-                .then(r=>r.json())
-                .then(d=>{
-                    el.grid.innerHTML='';
-                    d.data.forEach(m=>el.grid.appendChild(mkCard(m)));
+    searchTimer = setTimeout(() => {
+        const q = el.srch.value.trim();
+        if (q) {
+            fetch('/api/movies?q=' + encodeURIComponent(q) + '&limit=200')
+                .then(r => r.json())
+                .then(d => {
+                    el.grid.innerHTML = '';
+                    if (d.data.length > 0) {
+                        d.data.forEach(m => el.grid.appendChild(mkCard(m)));
+                        if (d.data.length > 0) updateHero(d.data[0]);
+                    } else {
+                        el.grid.innerHTML = '<div class="msg">No se encontraron resultados</div>';
+                    }
                 })
-                .catch(()=>el.grid.innerHTML='<div class="msg">Error</div>');
-        }else{
-            location.reload();
+                .catch(err => {
+                    console.error('Error en búsqueda:', err);
+                    el.grid.innerHTML = '<div class="msg">Error en la búsqueda</div>';
+                });
+        } else {
+            init();
         }
-    },400);
+    }, 400);
 };
 
-el.heroPlay.onclick=()=>{
-    if(S.movies.length>0) play(S.movies[0]);
+el.heroPlay.onclick = () => {
+    if (S.movies.length > 0) play(S.movies[0]);
+};
+
+el.randomBtn.onclick = () => {
+    fetch('/api/movies?random=true&limit=200')
+        .then(r => r.json())
+        .then(d => {
+            el.grid.innerHTML = '';
+            if (d.data.length > 0) {
+                d.data.forEach(m => el.grid.appendChild(mkCard(m)));
+                updateHero(d.data[0]);
+            }
+        })
+        .catch(err => console.error('Error:', err));
 };
 
 init();
 })();
 </script></body></html>`));
 
-app.listen(PORT,'0.0.0.0',()=>console.log('🎬 Filmax → Puerto '+PORT+' | '+MOVIES.length+' películas'));
+app.listen(PORT, '0.0.0.0', () => console.log('🎬 Filmax → Puerto ' + PORT + ' | ' + MOVIES.length + ' películas'));
